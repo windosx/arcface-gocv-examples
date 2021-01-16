@@ -1,6 +1,6 @@
 module arcface-gocv-examples
 
-go 1.14
+go 1.15
 
 require (
 	github.com/windosx/face-engine/v4 v4.0.1
