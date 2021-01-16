@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	. "github.com/windosx/face-engine/v3"
-	"gocv.io/x/gocv"
 	"image"
 	"image/color"
 	"strconv"
 	"time"
+
+	. "github.com/windosx/face-engine/v4"
+	"gocv.io/x/gocv"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 
 // 激活SDK
 func init() {
-	err := Activation("Your AppID", "Your SdkKey")
+	err := OnlineActivation("YourAppID", "YourSdkKey", "YourActiveCode")
 	if err != nil {
 		panic(err)
 	}
@@ -30,9 +31,8 @@ func main() {
 	// 初始化人脸引擎
 	engine, err = NewFaceEngine(DetectModeVideo,
 		OrientPriority0,
-		16,
-		50,
-		EnableFaceDetect | EnableAge | EnableGender)
+		10,
+		EnableFaceDetect|EnableAge|EnableGender)
 	if err != nil {
 		panic(err)
 	}
@@ -73,16 +73,26 @@ func main() {
 
 // 虹软开始干活
 func detectFace(engine *FaceEngine, img *gocv.Mat) {
-	width := img.Cols()
-	height := img.Rows()
-	faceInfo, err := engine.DetectFaces(width - width % 4, height, ColorFormatBGR24, img.DataPtrUint8())
+	dataPtr, err := img.DataPtrUint8()
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		return
+	}
+	imageData := ImageData{
+		PixelArrayFormat: ColorFormatBGR24,
+		Width:            img.Cols(),
+		Height:           img.Rows(),
+	}
+	imageData.WidthStep[0] = img.Step()
+	imageData.ImageData[0] = dataPtr
+	faceInfo, err := engine.DetectFacesEx(imageData)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		return
 	}
 	if faceInfo.FaceNum > 0 {
-		err = engine.Process(width - width % 4, height, ColorFormatBGR24, img.DataPtrUint8(), faceInfo, EnableAge | EnableGender)
-		for idx := 0; idx < int(faceInfo.FaceNum); idx ++{
+		err = engine.ProcessEx(imageData, faceInfo, EnableAge|EnableGender)
+		for idx := 0; idx < int(faceInfo.FaceNum); idx++ {
 			rect := image.Rect(int(faceInfo.FaceRect[idx].Left),
 				int(faceInfo.FaceRect[idx].Top),
 				int(faceInfo.FaceRect[idx].Right),
@@ -109,17 +119,17 @@ func detectFace(engine *FaceEngine, img *gocv.Mat) {
 				// 把年龄和性别信息绘在图上（!!注意，opencv不支持ASCII以外的字体，如有需要，引入freetype，加载本地字体资源）
 				gocv.PutText(img,
 					fmt.Sprintf("Age: %s", ageResult),
-					image.Pt(int(faceInfo.FaceRect[idx].Right + 2), int(faceInfo.FaceRect[idx].Top + 10)),
+					image.Pt(int(faceInfo.FaceRect[idx].Right+2), int(faceInfo.FaceRect[idx].Top+10)),
 					gocv.FontHersheyPlain,
 					1,
-					color.RGBA{R:255},
+					color.RGBA{R: 255},
 					1)
 				gocv.PutText(img,
 					fmt.Sprintf("Gender: %s", genderResult),
-					image.Pt(int(faceInfo.FaceRect[idx].Right + 2), int(faceInfo.FaceRect[idx].Top + 25)),
+					image.Pt(int(faceInfo.FaceRect[idx].Right+2), int(faceInfo.FaceRect[idx].Top+25)),
 					gocv.FontHersheyPlain,
 					1,
-					color.RGBA{R:255},
+					color.RGBA{R: 255},
 					1)
 			}
 		}
